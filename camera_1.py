@@ -2,8 +2,8 @@ import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 #-------------------------------------------
-src="C:\\Users\\rootx\\Desktop\\testler\\car.JPG"
-src2="C:\\Users\\rootx\\Desktop\\face1.JPG"
+#src="C:\\Users\\rootx\\Desktop\\testler\\car.JPG"
+#src2="C:\\Users\\rootx\\Desktop\\face1.JPG"
 #--------------------------------------------
 
 def quitFrame():
