@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
-from abc import ABC,abstractmethod
+from abc import ABC, abstractmethod
 import mysql.connector
 
 #-----------StDev Class--------------------------|
