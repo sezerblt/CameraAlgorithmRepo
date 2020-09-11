@@ -1,109 +1,71 @@
-#-------------------------------------------
-#-------------------------------------------
 
 import cv2
-import imutils
-import numpy as np
 
-bg = None
+def draw_rect(frame):
+    rows, cols, _ = frame.shape
+    global total_rectangle, hand_rect_one_x, hand_rect_one_y, hand_rect_two_x, hand_rect_two_y
 
-#--------------------------------------------------
-#--------------------------------------------------
-def run_avg(image, aWeight):
-    global bg
-    
-    if bg is None:
-        bg = image.copy().astype("float")
-        return
+    hand_rect_one_x = np.array(
+        [6 * rows / 20, 6 * rows / 20, 6 * rows / 20, 9 * rows / 20, 9 * rows / 20, 9 * rows / 20, 12 * rows / 20,
+         12 * rows / 20, 12 * rows / 20], dtype=np.uint32)
 
-    cv2.accumulateWeighted(image, bg, aWeight)
+    hand_rect_one_y = np.array(
+        [9 * cols / 20, 10 * cols / 20, 11 * cols / 20, 9 * cols / 20, 10 * cols / 20, 11 * cols / 20, 9 * cols / 20,
+         10 * cols / 20, 11 * cols / 20], dtype=np.uint32)
 
-#---------------------------------------------
-#---------------------------------------------
-def segment(image, threshold=25):
-    global bg
+    hand_rect_two_x = hand_rect_one_x + 10
+    hand_rect_two_y = hand_rect_one_y + 10
 
-    diff = cv2.absdiff(bg.astype("uint8"), image)
+    for i in range(total_rectangle):
+        cv2.rectangle(frame, (hand_rect_one_y[i], hand_rect_one_x[i]),
+                      (hand_rect_two_y[i], hand_rect_two_x[i]),
+                      (0, 255, 0), 1)
 
+    return frame
 
-    thresholded = cv2.threshold(diff, threshold, 255, cv2.THRESH_BINARY)[1]
+def hand_histogram(frame):
+    global hand_rect_one_x, hand_rect_one_y
 
+    hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    roi = np.zeros([90, 10, 3], dtype=hsv_frame.dtype)
 
-    (cnts, _) = cv2.findContours(thresholded.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    for i in range(total_rectangle):
+        roi[i * 10: i * 10 + 10, 0: 10] = hsv_frame[hand_rect_one_x[i]:hand_rect_one_x[i] + 10,
+                                          hand_rect_one_y[i]:hand_rect_one_y[i] + 10]
 
+    hand_hist = cv2.calcHist([roi], [0, 1], None, [180, 256], [0, 180, 0, 256])
+    return cv2.normalize(hand_hist, hand_hist, 0, 255, cv2.NORM_MINMAX)
 
-    if len(cnts) == 0:
-        return
-    else:
-        
-        segmented = max(cnts, key=cv2.contourArea)
-        return (thresholded, segmented)
+def hist_masking(frame, hist):
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    dst = cv2.calcBackProject([hsv], [0, 1], hist, [0, 180, 0, 256], 1)
 
-#-----------------
-#-----------------
-if __name__ == "__main__":
-    
-    aWeight = 0.5
+    disc = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (31, 31))
+    cv2.filter2D(dst, -1, disc, dst)
 
-    camera = cv2.VideoCapture(0)
+    ret, thresh = cv2.threshold(dst, 150, 255, cv2.THRESH_BINARY)
 
-    top, right, bottom, left = 10, 300, 250, 600
+def manage_image_opr(frame, hand_hist):
+    hist_mask_image = hist_masking(frame, hand_hist)
+    contour_list = contours(hist_mask_image)
+    max_cont = max_contour(contour_list)
 
-    num_frames = 0
+    cnt_centroid = centroid(max_cont)
+    cv2.circle(frame, cnt_centroid, 5, [255, 0, 255], -1)
 
-   
-    while(True):
-     
-        (grabbed, frame) = camera.read()
-
-        frame = imutils.resize(frame, width=700)
-
-       
-        frame = cv2.flip(frame, 1)
-
-        
-        clone = frame.copy()
-
-        
-        (height, width) = frame.shape[:2]
-
-       
-        roi = frame[top:bottom, right:left]
-
-        
-        gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-        gray = cv2.GaussianBlur(gray, (7, 7), 0)
-
-        
-        if num_frames < 30:
-            run_avg(gray, aWeight)
+    if max_cont is not None:
+        hull = cv2.convexHull(max_cont, returnPoints=False)
+        defects = cv2.convexityDefects(max_cont, hull)
+        far_point = farthest_point(defects, max_cont, cnt_centroid)
+        print("Centroid : " + str(cnt_centroid) + ", farthest Point : " + str(far_point))
+        cv2.circle(frame, far_point, 5, [0, 0, 255], -1)
+        if len(traverse_point) < 20:
+            traverse_point.append(far_point)
         else:
-            
-            hand = segment(gray)
+            traverse_point.pop(0)
+            traverse_point.append(far_point)
 
+        draw_circles(frame, traverse_point)
+    thresh = cv2.merge((thresh, thresh, thresh))
 
-            if hand is not None:
-                (thresholded, segmented) = hand
-
-
-                cv2.drawContours(clone, [segmented + (right, top)], -1, (0, 0, 255))
-                cv2.imshow("Thesholded", thresholded)
-
-        cv2.rectangle(clone, (left, top), (right, bottom), (0,255,0), 2)
-
-
-        num_frames += 1
-
-
-        cv2.imshow("Video Feed", clone)
-
-
-        keypress = cv2.waitKey(1) & 0xFF
-
-
-        if keypress == ord("q"):
-            break
-
-
-camera.release()
-cv2.destroyAllWindows()
+    return cv2.bitwise_and(frame, thresh)

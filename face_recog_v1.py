@@ -68,14 +68,17 @@ class FaceRecognition():
                 frame = cv.circle(frame, eye_center, radius, (255, 0, 0 ), 4)
         cv.imshow('Yuz Tanımlama', frame)
 
+f=FaceRecognition()
+f
+"""
 #test
 def detectAndDisplay(frame):
     font = cv.FONT_HERSHEY_SIMPLEX
     frame=cv.flip(frame,1)
-    frame_gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-    frame_gray = cv.equalizeHist(frame_gray)
+    frame = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+    frame = cv.equalizeHist(frame)
     #-- Detect faces
-    faces = face_cascade.detectMultiScale(frame_gray)
+    faces = face_cascade.detectMultiScale(frame)
     #print(faces)
     for (x,y,w,h) in faces:
         center = (x + w//2, y + h//2)
@@ -100,7 +103,7 @@ def detectAndDisplay(frame):
     
 
 face_cascade = cv.CascadeClassifier("haarcascades/haarcascade_frontalface_alt.xml")
-eyes_cascade = cv.CascadeClassifier("haarcascades/haarcascade_eye_tree_eyeglasses.xml")
+eyes_cascade = cv.CascadeClassifier("haarcascades/haarcascade_eye.xml")
 cap = cv.VideoCapture(0)
 if not cap.isOpened:
     print('--(!)Hata Kamera açılmadı')
@@ -116,7 +119,7 @@ while True:
 
 cap.release()
 cv.destroyAllWindows()
-"""
+
 while True:
     #Capture frame-by-frame
     ret, frame = video_capture.read()

@@ -1,0 +1,25 @@
+#include <iostream>
+#include <string>
+#include <sstream>
+
+#include "opemcv2/pcore.hpp"
+#include "opncv2/highgui.hpp"
+
+using namespace std;
+
+int main(int argc,const char* argv)
+{
+  Mat color=imread("myimage.jpg",CV_LOAD_IMAGE_COLOR);
+  Mat gray= imread("mygray.png",CV_LOAD_IMAGE_GRAYSCALE);
+  imwirte("saveimage.png",gray);
+  int img_row = color.cols-1;
+  int img_col = color.rows-1;
+  Vec3b pixel = color.at<>(img_row,img_col);
+  cout<<"B:"<<(int)pixel[0]<<" ,G"<<(int)pixel[1]<<" ,R"<<(int)pixel[2]<<endl;
+  imshow();
+  imshow();
+  waitKey(0);
+  return 0;
+
+  //-----------------------------
+}
